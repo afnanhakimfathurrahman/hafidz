@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+@import '@fontsource/fredoka/400.css';
+@import '@fontsource/fredoka/600.css';
+@import '@fontsource/amiri-quran/400.css';
+
+@theme {
+  --font-sans: 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --font-quran: 'Amiri Quran', 'KFGQPC Uthman Taha Naskh', serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-linear-to-b from-sky-200 via-blue-100 to-amber-50 bg-fixed text-slate-800 antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.font-quran {
+  font-family: var(--font-quran);
+  line-height: 2.3;
+  direction: rtl;
+}
+
+/* Gentle floating for map islands and mascot */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.bob {
+  animation: bob 3s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bob { animation: none; }
+}
