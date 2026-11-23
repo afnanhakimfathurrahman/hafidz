@@ -333,7 +333,7 @@ function tone(freq: number, at: number, dur: number, gain = 0.15, type: Oscillat
   o.stop(c.currentTime + at + dur + 0.05);
 }
 
-export type Sfx = 'tap' | 'correct' | 'gentle' | 'bloom' | 'coin';
+export type Sfx = 'tap' | 'correct' | 'gentle' | 'bloom' | 'coin' | 'combo';
 
 export function sfx(kind: Sfx) {
   // Audio ducking: never play effects over a recitation
@@ -346,6 +346,11 @@ export function sfx(kind: Sfx) {
       case 'correct':
         tone(880, 0, 0.5);
         tone(1320, 0.12, 0.6);
+        break;
+      case 'combo':
+        tone(880, 0, 0.14, 0.12, 'triangle');
+        tone(1174, 0.07, 0.16, 0.12, 'triangle');
+        tone(1568, 0.14, 0.35, 0.14, 'triangle');
         break;
       case 'gentle':
         tone(392, 0, 0.35, 0.08);

@@ -5,6 +5,7 @@ import { VOCAB } from '../../data/vocab';
 import { BintangSays, type Mood } from '../../components/Bintang';
 import { TopBar } from '../../components/ui';
 import { RewardModal } from '../../components/RewardModal';
+import { ComboBanner } from '../../components/ComboBanner';
 import { playWord, say, sfx, stopAll, preloadVoices } from '../../services/audio';
 import { islandVoiceLines } from '../../data/voiceLines';
 import { pick, praise, retry, shuffle } from '../../services/lines';
@@ -21,12 +22,14 @@ interface Card {
   emoji: string;
 }
 
-/** Mode 2: Jodohkan Makna — memory match: Arabic word ↔ picture + meaning. */
+/** Mode 2: Jodohkan Makna — memory match: Arabic word ↔ picture + meaning, with combo streak. */
 export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
   const surah = surahOf(surahNo);
   const profile = useProfile()!;
   const completeActivity = useGameStore((s) => s.completeActivity);
   const recordCorrect = useGameStore((s) => s.recordCorrect);
+  const recordCombo = useGameStore((s) => s.recordCombo);
+  const addCoins = useGameStore((s) => s.addCoins);
   const band = profile.ageBand;
 
   const cards = useMemo(() => {
@@ -43,12 +46,14 @@ export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
   const [open, setOpen] = useState<string[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   const [wrongStreak, setWrongStreak] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [bonusCoins, setBonusCoins] = useState(0);
   const [hint, setHint] = useState<number | null>(null);
   const [bubble, setBubble] = useState<{ text: string; mood: Mood }>({
     text: 'Balik kartunya, lalu cari pasangannya!',
     mood: 'happy',
   });
-  const [reward, setReward] = useState<{ stars: number; gained: number } | null>(null);
+  const [reward, setReward] = useState<{ stars: number; gained: number; coins: number } | null>(null);
 
   useEffect(() => {
     preloadVoices(islandVoiceLines(surahNo));
@@ -74,7 +79,13 @@ export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
     const [a, b] = next.map((k) => cards.find((x) => x.key === k)!);
     if (a.pair === b.pair) {
       setTimeout(() => {
-        sfx('correct');
+        const nextCombo = combo + 1;
+        setCombo(nextCombo);
+        recordCombo(nextCombo);
+        const stepBonus = nextCombo >= 2 ? 2 : 0;
+        const nextBonus = bonusCoins + stepBonus;
+        if (stepBonus > 0) setBonusCoins(nextBonus);
+        sfx(nextCombo >= 2 ? 'combo' : 'correct');
         recordCorrect();
         const m = [...matched, a.pair];
         setMatched(m);
@@ -82,8 +93,9 @@ export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
         setWrongStreak(0);
         setHint(null);
         if (m.length * 2 === cards.length) {
+          if (nextBonus > 0) addCoins(nextBonus);
           const r = completeActivity(surahNo, 'jodoh', 15);
-          setTimeout(() => setReward({ stars: r.newStars, gained: r.gained }), 600);
+          setTimeout(() => setReward({ stars: r.newStars, gained: r.gained, coins: 15 + nextBonus }), 600);
         } else {
           const p = praise();
           const meaning = a.kind === 'meaning' ? a.text : b.text;
@@ -95,6 +107,7 @@ export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
       setTimeout(() => {
         sfx('gentle');
         setOpen([]);
+        setCombo(0);
         const streak = wrongStreak + 1;
         setWrongStreak(streak);
         // Hint after 2 wrong attempts: a correct pair sparkles
@@ -111,6 +124,7 @@ export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
     <div className="flex min-h-screen flex-col">
       <TopBar back={`/pulau/${surahNo}`} title={`🃏 Jodohkan Makna · ${surah.latin}`} />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 p-4">
+        <ComboBanner combo={combo} bonusCoins={bonusCoins} />
         <BintangSays text={bubble.text} mood={bubble.mood} size={70} />
         <div className={`grid gap-3 ${band === 'A' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
           {cards.map((c) => {
@@ -151,9 +165,14 @@ export default function JodohkanMakna({ surahNo }: { surahNo: number }) {
         open={!!reward}
         stars={reward?.stars ?? 0}
         gained={reward?.gained ?? 0}
-        coins={15}
+        coins={reward?.coins ?? 15}
         message="Semua cocok!"
-        onNext={() => navigate(`/pulau/${surahNo}`, true)}
+        nextLabel="Mainkan Kereta Ayat 🚂"
+        onNext={() => navigate(`/pulau/${surahNo}/susun`, true)}
+        secondaryAction={{
+          label: 'Kembali ke Pulau',
+          onClick: () => navigate(`/pulau/${surahNo}`, true),
+        }}
       />
     </div>
   );

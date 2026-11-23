@@ -17,22 +17,23 @@ type Phase = 'listen' | 'together' | 'alone';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Mode 0: Dengar & Ulangi — talaqqi style listen, repeat, then recall with words fading away. */
+/** Mode 0: Dengar & Ulangi — talaqqi style listen, repeat, tap words, record voice, and auto-chain. */
 export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: number; part?: number }) {
   const surah = surahOf(surahNo);
   const profile = useProfile()!;
   const progress = useProgress();
   const settings = useGameStore((s) => s.settings);
   const completePart = useGameStore((s) => s.completePart);
+  const claimVoiceBonus = useGameStore((s) => s.claimVoiceBonus);
 
   const parts = partsOf(surah, profile.ageBand);
   const firstOpen = parts.findIndex((_, i) => !(progress.parts[surahNo] ?? []).includes(i));
-  const [partIdx] = useState(() => partParam ?? (firstOpen === -1 ? 0 : firstOpen));
+  const [partIdx, setPartIdx] = useState(() => partParam ?? (firstOpen === -1 ? 0 : firstOpen));
   const [from, to] = parts[partIdx];
 
   // Steps: every chunk of every ayah in this part
   const maxWords = profile.ageBand === 'A' ? 4 : 7;
-  const steps = [];
+  const steps: { n: number; c: [number, number] }[] = [];
   for (let n = from; n <= to; n++) for (const c of chunksOf(surah.ayahs[n - 1], maxWords)) steps.push({ n, c });
 
   const [step, setStep] = useState(0);
@@ -41,8 +42,10 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
   const [bubble, setBubble] = useState<{ text: string; mood: Mood }>({ text: 'Dengarkan baik-baik ya!', mood: 'happy' });
   const [rec, setRec] = useState<null | (() => Promise<Blob>)>(null);
   const [myVoice, setMyVoice] = useState<Blob | null>(null);
+  const [voiceBonusGot, setVoiceBonusGot] = useState(() =>
+    (progress.voiceBonusParts ?? []).includes(`${surahNo}:${partIdx}`),
+  );
   const [reward, setReward] = useState<{ stars: number; gained: number } | null>(null);
-  // Each guided sequence gets an id; tapping any button starts a new one, which silently ends the old one
   const runId = useRef(0);
 
   const cur = steps[step];
@@ -55,6 +58,22 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
   for (const [a, w, emoji, meaning] of VOCAB[surahNo] ?? [])
     if (a === cur.n && w - 1 >= cur.c[0] && w - 1 < cur.c[1]) keyWords[w - 1] = { emoji, meaning };
   const keyList = Object.entries(keyWords).map(([i, k]) => ({ i: Number(i), ...k }));
+
+  const interrupt = () => {
+    runId.current++;
+    stopAll();
+    setHl(-1);
+    return runId.current;
+  };
+
+  const hearWord = async (i: number) => {
+    const id = interrupt();
+    setHl(i);
+    const word = ayah.words[i];
+    if (word.m) setBubble({ text: `${word.t} — ${word.m}`, mood: 'happy' });
+    await playWord(surahNo, cur.n, i);
+    if (runId.current === id) setHl(-1);
+  };
 
   const hearKeyWord = async (i: number, k: KeyWord) => {
     const id = interrupt();
@@ -75,16 +94,9 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
     for (let i = 0; i < times && runId.current === id; i++) {
       const ok = await playAyah(surahNo, cur.n, { from: cur.c[0], to: cur.c[1], onWord: setHl });
       if (!ok) return false;
-      await wait(700);
+      await wait(550);
     }
     return true;
-  };
-
-  const interrupt = () => {
-    runId.current++;
-    stopAll();
-    setHl(-1);
-    return runId.current;
   };
 
   // Guided sequence for each step: listen N times, read together, then alone
@@ -111,7 +123,7 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
       stopAll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, partIdx]);
 
   const help = async () => {
     const id = interrupt();
@@ -127,6 +139,12 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
   const toggleRecord = async () => {
     if (rec) {
       await stopRecording();
+      const gotBonus = claimVoiceBonus(surahNo, partIdx, 5);
+      if (gotBonus) {
+        setVoiceBonusGot(true);
+        sfx('coin');
+        toast('Bonus Suara Emas +5 🪙!');
+      }
       speak('MasyaAllah, ayo dengarkan suaramu!', 'cheer');
     } else {
       try {
@@ -163,12 +181,18 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
   };
 
   const showBasmalah = step === 0 && cur.n === 1 && cur.c[0] === 0;
+  const hasMoreParts = partIdx + 1 < parts.length;
 
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar back={`/pulau/${surahNo}`} title={`🎧 ${surah.latin}${parts.length > 1 ? ` · Bagian ${partIdx + 1}` : ''}`} />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 p-4">
-        <ProgressDots total={steps.length} current={step} />
+        <div className="flex items-center justify-between gap-2">
+          <ProgressDots total={steps.length} current={step} />
+          <span className="shrink-0 text-sm font-semibold text-slate-600 tabular-nums">
+            {phase === 'listen' ? '👂 Dengar' : phase === 'together' ? '🗣️ Baca Bareng' : '⭐ Baca Mandiri'}
+          </span>
+        </div>
         <BintangSays text={bubble.text} mood={bubble.mood} />
 
         <QuranPanel>
@@ -179,6 +203,7 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
             highlight={hl}
             hide={hide}
             ayahNo={cur.n}
+            onWord={hearWord}
             meanings={settings.showWordMeaning}
             keyWords={keyWords}
             size={profile.ageBand === 'A' ? 'text-5xl' : 'text-4xl'}
@@ -186,6 +211,7 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
           {settings.showTranslation && (
             <p className="mt-3 text-center text-base text-slate-500">{ayah.tr}</p>
           )}
+          <p className="mt-2 text-center text-xs text-slate-400">Ketuk kata Arab mana saja untuk dengar pengucapannya</p>
         </QuranPanel>
 
         {keyList.length > 0 && (
@@ -209,7 +235,8 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
           </Button>
           {canRecord() && (
             <Button big color={rec ? 'rose' : 'purple'} onClick={toggleRecord} label="Rekam suaraku">
-              {rec ? <Square size={28} /> : <Mic size={30} />} {rec ? 'Stop' : 'Rekam'}
+              {rec ? <Square size={28} /> : <Mic size={30} />}
+              <span>{rec ? 'Stop' : voiceBonusGot ? 'Rekam' : 'Rekam (+5 🪙)'}</span>
             </Button>
           )}
           {myVoice && (
@@ -227,8 +254,22 @@ export default function ListenRepeat({ surahNo, part: partParam }: { surahNo: nu
         stars={reward?.stars ?? 0}
         gained={reward?.gained ?? 0}
         coins={10}
-        message={partIdx + 1 < parts.length ? L.partDone : L.allDone}
-        onNext={() => navigate(`/pulau/${surahNo}`, true)}
+        message={hasMoreParts ? L.partDone : L.allDone}
+        nextLabel={hasMoreParts ? `Lanjut Bagian ${partIdx + 2}` : '⚔️ Tantang Penjaga Surah!'}
+        onNext={() => {
+          if (hasMoreParts) {
+            setReward(null);
+            setStep(0);
+            setPartIdx(partIdx + 1);
+            setVoiceBonusGot((progress.voiceBonusParts ?? []).includes(`${surahNo}:${partIdx + 1}`));
+          } else {
+            navigate(`/pulau/${surahNo}/battle`, true);
+          }
+        }}
+        secondaryAction={{
+          label: 'Kembali ke Pulau',
+          onClick: () => navigate(`/pulau/${surahNo}`, true),
+        }}
       />
     </div>
   );

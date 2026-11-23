@@ -13,6 +13,7 @@ export function RewardModal({
   message,
   onNext,
   nextLabel = 'Lanjut',
+  secondaryAction,
 }: {
   open: boolean;
   stars: number;
@@ -21,6 +22,7 @@ export function RewardModal({
   message: string;
   onNext: () => void;
   nextLabel?: string;
+  secondaryAction?: { label: string; onClick: () => void };
 }) {
   useEffect(() => {
     if (!open) return;
@@ -42,6 +44,11 @@ export function RewardModal({
         <Button big color="green" className="mt-2 w-full" onClick={onNext}>
           {nextLabel} ➜
         </Button>
+        {secondaryAction && (
+          <Button color="white" className="w-full" onClick={secondaryAction.onClick}>
+            {secondaryAction.label}
+          </Button>
+        )}
       </div>
     </Modal>
   );

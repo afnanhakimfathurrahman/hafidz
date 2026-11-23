@@ -6,6 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa';
 const AUDIO_HOSTS = /^https:\/\/(mirrors\.quranicaudio\.com|verses\.quran\.com)\/.*\.mp3$/i;
 
 export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: true,
+    hmr: false,
+    watch: {
+      ignored: ['**/public/voice/**', '**/pilihan-suara/**', '**/dist/**'],
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

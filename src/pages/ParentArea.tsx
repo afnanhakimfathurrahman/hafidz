@@ -66,7 +66,7 @@ export default function ParentArea() {
   const downloadAll = async () => {
     if (!canDownload()) {
       setDlAll(null);
-      setMsg('Unduh offline hanya bisa dari http://localhost:8080 di HP ini (atau HTTPS).');
+      setMsg(`Unduh offline hanya bisa dari ${location.origin} (HTTPS atau localhost).`);
       return;
     }
     let failed = false;
@@ -153,6 +153,50 @@ export default function ParentArea() {
           )}
         </Section>
 
+        <Section title="🏅 Setoran Hafalan Anak">
+          {Object.keys(p.setoran ?? {}).length === 0 ? (
+            <p className="text-slate-500">
+              Belum ada setoran. Anak bisa mengirim setoran dari halaman pulau surah yang sudah dipelajari.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {Object.entries(p.setoran ?? {}).map(([sNoStr, entry]) => {
+                const sNo = Number(sNoStr);
+                const sName = SURAHS.find((x) => x.number === sNo)?.latin ?? `Surah ${sNo}`;
+                const fullRec = recs.find((r) => r.surah === sNo && r.ayah === 0);
+                return (
+                  <div key={sNo} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 p-3">
+                    <div>
+                      <div className="font-semibold text-slate-800">{sName}</div>
+                      <div className="text-xs text-slate-500">
+                        {entry.status === 'approved' ? 'Sah ✓ (+30 🪙 sudah diberikan)' : 'Menunggu persetujuan orang tua'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {fullRec && (
+                        <Button color="white" onClick={() => playBlob(fullRec.blob)} label="Putar setoran">
+                          <Play size={18} /> Putar
+                        </Button>
+                      )}
+                      {entry.status !== 'approved' && (
+                        <Button
+                          color="green"
+                          onClick={() => {
+                            s.approveSetoran(sNo);
+                            toast(`Stempel Hafiz untuk ${sName} disahkan! (+30 🪙 untuk anak)`);
+                          }}
+                        >
+                          Sahkan ⭐
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+
         <Section title="🎙️ Rekaman Suara Anak">
           {recs.length === 0 ? (
             <p className="text-slate-500">Belum ada rekaman. Rekaman tersimpan di perangkat ini saja dan terhapus otomatis setelah 7 hari.</p>
@@ -164,7 +208,7 @@ export default function ParentArea() {
                     <Play size={20} />
                   </Button>
                   <span className="flex-1">
-                    {SURAHS.find((x) => x.number === r.surah)?.latin} ayat {r.ayah}
+                    {SURAHS.find((x) => x.number === r.surah)?.latin} {r.ayah === 0 ? '(Setoran penuh)' : `ayat ${r.ayah}`}
                   </span>
                   <span className="text-sm text-slate-400">{new Date(r.at).toLocaleDateString('id-ID')}</span>
                 </div>

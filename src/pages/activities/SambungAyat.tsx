@@ -6,6 +6,7 @@ import { AyahText, QuranPanel } from '../../components/AyahText';
 import { BintangSays, type Mood } from '../../components/Bintang';
 import { Button, Modal, TopBar, ProgressDots } from '../../components/ui';
 import { RewardModal } from '../../components/RewardModal';
+import { ComboBanner } from '../../components/ComboBanner';
 import { playAyah, say, sfx, stopAll } from '../../services/audio';
 import { praise, retry, shuffle } from '../../services/lines';
 import { useGameStore, useProfile } from '../../store/useGameStore';
@@ -145,6 +146,7 @@ export default function SambungAyat({
   const completeActivity = useGameStore((s) => s.completeActivity);
   const failReview = useGameStore((s) => s.failReview);
   const recordCorrect = useGameStore((s) => s.recordCorrect);
+  const recordCombo = useGameStore((s) => s.recordCombo);
   const addCoins = useGameStore((s) => s.addCoins);
   const recordChallenge = useGameStore((s) => s.recordChallenge);
   const passSkipTest = useGameStore((s) => s.passSkipTest);
@@ -155,12 +157,14 @@ export default function SambungAyat({
   const [qi, setQi] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [firstTry, setFirstTry] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [bonusCoins, setBonusCoins] = useState(0);
   const [wrongPick, setWrongPick] = useState<number[]>([]);
   const [solved, setSolved] = useState(false);
   const [hl, setHl] = useState(-1);
   const [built, setBuilt] = useState<number[]>([]);
   const [bubble, setBubble] = useState<{ text: string; mood: Mood }>({ text: '', mood: 'happy' });
-  const [end, setEnd] = useState<null | { pass: boolean; stars: number; gained: number }>(null);
+  const [end, setEnd] = useState<null | { pass: boolean; stars: number; gained: number; coins: number }>(null);
   const [challengeEnd, setChallengeEnd] = useState<null | { score: number; best: number; coins: number }>(null);
   const [deadline, setDeadline] = useState<{ at: number; ms: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -210,26 +214,34 @@ export default function SambungAyat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const advance = async (score: number) => {
+  const advance = async (score: number, bonus = bonusCoins) => {
     await new Promise((r) => setTimeout(r, 500));
     if (qi + 1 < questions.length) setQi(qi + 1);
-    else finish(score);
+    else finish(score, bonus);
   };
 
   const onCorrect = async () => {
     setSolved(true);
     setDeadline(null);
-    const score = firstTry + (mistakes === 0 ? 1 : 0);
-    if (mistakes === 0) setFirstTry(score);
+    const clean = mistakes === 0;
+    const score = firstTry + (clean ? 1 : 0);
+    if (clean) setFirstTry(score);
+    const nextCombo = clean ? combo + 1 : 0;
+    setCombo(nextCombo);
+    if (nextCombo >= 2) recordCombo(nextCombo);
+    const stepBonus = nextCombo >= 2 ? 2 : 0;
+    const nextBonus = bonusCoins + stepBonus;
+    if (stepBonus > 0) setBonusCoins(nextBonus);
     recordCorrect();
-    sfx('correct');
+    sfx(nextCombo >= 2 ? 'combo' : 'correct');
     await speak(praise(), 'cheer');
     await playAyah(surahNo, q.answer.n, { onWord: setHl });
-    await advance(score);
+    await advance(score, nextBonus);
   };
 
   const onWrong = (i?: number) => {
     setMistakes((m) => m + 1);
+    setCombo(0);
     if (i !== undefined) setWrongPick((w) => [...w, i]);
     sfx('gentle');
     // In the challenge the clock keeps running, so don't spend it on a replay
@@ -240,10 +252,11 @@ export default function SambungAyat({
   const onTimeUp = async () => {
     setSolved(true);
     setDeadline(null);
+    setCombo(0);
     sfx('gentle');
     await speak('Waktunya habis! Tidak apa-apa, ini jawabannya.', 'think');
     await playAyah(surahNo, q.answer.n, { onWord: setHl });
-    await advance(firstTry);
+    await advance(firstTry, bonusCoins);
   };
 
   // Countdown tick
@@ -257,9 +270,9 @@ export default function SambungAyat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now]);
 
-  const finish = (score: number) => {
+  const finish = (score: number, bonus = bonusCoins) => {
     if (timed) {
-      const coins = score * 3;
+      const coins = score * 3 + bonus;
       addCoins(coins);
       const best = recordChallenge(surahNo, score);
       setChallengeEnd({ score, best, coins });
@@ -272,22 +285,24 @@ export default function SambungAyat({
       const pass = ratio >= 0.8;
       if (pass) {
         const r = passSkipTest(surahNo, partsOf(surah, profile.ageBand).length);
-        setEnd({ pass, stars: r.newStars, gained: r.gained });
+        setEnd({ pass, stars: r.newStars, gained: r.gained, coins: 20 });
       } else {
         addCoins(5);
-        setEnd({ pass, stars: 0, gained: 0 });
+        setEnd({ pass, stars: 0, gained: 0, coins: 5 });
         speak('Belum lulus, tidak apa-apa! Yuk pelajari pulau sebelumnya dulu.', 'think');
       }
       return;
     }
     const pass = ratio >= (review ? 0.6 : 0.5);
     if (pass) {
-      const r = completeActivity(surahNo, review ? 'review' : 'sambung', review ? 20 : 15);
-      setEnd({ pass, stars: r.newStars, gained: r.gained });
+      const base = review ? 20 : 15;
+      if (bonus > 0) addCoins(bonus);
+      const r = completeActivity(surahNo, review ? 'review' : 'sambung', base);
+      setEnd({ pass, stars: r.newStars, gained: r.gained, coins: base + bonus });
     } else {
       if (review) failReview(surahNo);
       addCoins(5);
-      setEnd({ pass, stars: 0, gained: 0 });
+      setEnd({ pass, stars: 0, gained: 0, coins: 5 });
       speak('Hampir berhasil! Yuk dengarkan lagi lalu coba sekali lagi.', 'think');
     }
   };
@@ -309,6 +324,8 @@ export default function SambungAyat({
     setChallengeEnd(null);
     setQi(0);
     setFirstTry(0);
+    setCombo(0);
+    setBonusCoins(0);
     setRound((r) => r + 1);
   };
 
@@ -320,6 +337,7 @@ export default function SambungAyat({
       <TopBar back={`/pulau/${surahNo}`} title={`${skip ? '🚀 Tes Lompat Pulau' : timed ? '⏱️ Tantangan Waktu' : review ? '💭 Murojaah' : '🧩 Sambung Ayat'} · ${surah.latin}`} />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 p-4">
         <ProgressDots total={questions.length} current={qi} />
+        <ComboBanner combo={combo} bonusCoins={bonusCoins} />
         {timed && (
           <div className="h-4 w-full overflow-hidden rounded-full bg-white/80 shadow-inner" aria-label="Sisa waktu">
             {deadline && !solved && (
@@ -415,9 +433,15 @@ export default function SambungAyat({
         open={!!end?.pass}
         stars={end?.stars ?? 0}
         gained={end?.gained ?? 0}
-        coins={skip ? 20 : review ? 20 : 15}
+        coins={end?.coins ?? (skip ? 20 : review ? 20 : 15)}
         message={skip ? 'MasyaAllah, kamu sudah hafal! Kabutnya hilang.' : review ? 'Murojaah berhasil!' : 'Sambung Ayat selesai!'}
-        onNext={() => navigate(`/pulau/${surahNo}`, true)}
+        nextLabel={!skip && !review ? 'Mainkan Lengkapi Kata ✏️' : 'Kembali ke Pulau'}
+        onNext={() => navigate(!skip && !review ? `/pulau/${surahNo}/lengkapi` : `/pulau/${surahNo}`, true)}
+        secondaryAction={
+          !skip && !review
+            ? { label: 'Kembali ke Pulau', onClick: () => navigate(`/pulau/${surahNo}`, true) }
+            : undefined
+        }
       />
       <Modal open={!!challengeEnd}>
         <div className="flex flex-col items-center gap-3">

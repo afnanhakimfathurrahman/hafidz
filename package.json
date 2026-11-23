@@ -4,11 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node node_modules/vite/bin/vite.js --host --port 8080",
-    "build": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/vite/bin/vite.js build && node scripts/prerender.mjs",
-    "preview": "node node_modules/vite/bin/vite.js preview --host --port 8080 --strictPort",
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "tsc --noEmit && vite build && node scripts/prerender.mjs",
+    "preview": "vite preview --host 0.0.0.0 --port 3000 --strictPort",
+    "lint": "tsc --noEmit",
     "data": "node scripts/build-quran-data.mjs",
-    "typecheck": "node node_modules/typescript/bin/tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource/amiri-quran": "^5.3.0",

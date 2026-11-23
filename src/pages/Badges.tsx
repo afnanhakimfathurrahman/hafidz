@@ -1,6 +1,7 @@
 import { BADGES } from '../data/badges';
-import { TopBar } from '../components/ui';
+import { Button, TopBar } from '../components/ui';
 import { useProgress } from '../store/useGameStore';
+import { navigate } from '../hooks/useRoute';
 import { notify, preloadVoices } from '../services/audio';
 import { useEffect } from 'react';
 import { gardenPlant } from './MapView';
@@ -18,10 +19,13 @@ export default function Badges() {
       <main className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
         <section className="rounded-3xl bg-linear-to-br from-lime-200 to-emerald-300 p-4 text-center shadow">
           <div className="bob text-7xl">{gardenPlant(p.garden.days)}</div>
-          <h2 className="text-2xl font-semibold">Taman Harian</h2>
-          <p className="text-slate-700">
-            Tumbuh {p.garden.days} hari. Setiap hari kamu belajar, tamanmu bertambah besar. Kalau libur, tamannya hanya menunggu, tidak layu. 🌱
+          <h2 className="text-2xl font-semibold">Kebun Hafiz</h2>
+          <p className="mb-3 text-slate-700">
+            Tumbuh {p.garden.days} hari. Setiap surah yang hafal menumbuhkan tanaman baru di kebunmu! 🌱
           </p>
+          <Button color="green" className="mx-auto" onClick={() => navigate('/kebun')}>
+            🌱 Buka Kebun Hafiz
+          </Button>
         </section>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {BADGES.map((b) => {

@@ -1,4 +1,4 @@
-export type Slot = 'hat' | 'scarf' | 'boat' | 'color';
+export type Slot = 'hat' | 'scarf' | 'boat' | 'color' | 'garden';
 
 export interface ShopItem {
   id: string;
@@ -25,6 +25,13 @@ export const SHOP: ShopItem[] = [
   { id: 'boat-sail', slot: 'boat', name: 'Perahu Layar', price: 60, preview: '⛵' },
   { id: 'boat-speed', slot: 'boat', name: 'Speedboat', price: 120, preview: '🚤' },
   { id: 'boat-ship', slot: 'boat', name: 'Kapal Besar', price: 250, preview: '🚢' },
+  // Dekorasi Kebun Hafiz (long-term coin sink)
+  { id: 'garden-lantern', slot: 'garden', name: 'Lentera Taman', price: 35, preview: '🏮' },
+  { id: 'garden-pond', slot: 'garden', name: 'Kolam Ikan', price: 50, preview: '🐠' },
+  { id: 'garden-fountain', slot: 'garden', name: 'Air Mancur', price: 75, preview: '⛲' },
+  { id: 'garden-tent', slot: 'garden', name: 'Tenda Kemah', price: 90, preview: '⛺' },
+  { id: 'garden-rainbow', slot: 'garden', name: 'Pelangi Kebun', price: 140, preview: '🌈' },
+  { id: 'garden-lighthouse', slot: 'garden', name: 'Mercusuar', price: 200, preview: '🗼' },
 ];
 
 export const itemOf = (id?: string) => SHOP.find((i) => i.id === id);
