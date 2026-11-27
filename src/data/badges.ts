@@ -1,4 +1,6 @@
 import type { Progress } from '../store/useGameStore';
+import { CRAFT_ITEMS } from './rpg';
+import { ZONES, zoneSurahNumbers } from './zones';
 
 export interface Badge {
   id: string;
@@ -10,19 +12,33 @@ export interface Badge {
 
 const learned = (p: Progress, ...surahs: number[]) => surahs.every((s) => (p.stars[s] ?? 0) >= 2);
 const countLearned = (p: Progress) => Object.values(p.stars).filter((s) => s >= 2).length;
+const countActivity = (p: Progress, key: 'arti' | 'battle') => Object.values(p.done).filter((d) => Boolean(d?.[key])).length;
+const zoneComplete = (p: Progress, zoneId: string) => {
+  const z = ZONES.find((x) => x.id === zoneId);
+  return z ? zoneSurahNumbers(z).every((n) => (p.stars[n] ?? 0) >= 2) : false;
+};
 
 export const BADGES: Badge[] = [
   { id: 'first', emoji: '🌱', name: 'Langkah Pertama', desc: 'Menyelesaikan kegiatan pertama', check: (p) => Object.keys(p.done).length > 0 },
   { id: 'nas', emoji: '🛡️', name: 'Sahabat An-Nas', desc: 'Hafal Surah An-Nas', check: (p) => learned(p, 114) },
   { id: 'qul3', emoji: '✋', name: 'Hafal 3 Qul', desc: 'Hafal Al-Ikhlas, Al-Falaq, An-Nas', check: (p) => learned(p, 112, 113, 114) },
-  { id: 'zone1', emoji: '🌅', name: 'Juara Teluk Cahaya', desc: 'Hafal seluruh wilayah Teluk Cahaya', check: (p) => learned(p, 114, 113, 112, 111, 110, 109) },
+  { id: 'zone1', emoji: '🌅', name: 'Juara Teluk Cahaya', desc: 'Hafal seluruh wilayah Teluk Cahaya', check: (p) => zoneComplete(p, 'teluk-cahaya') },
+  { id: 'zone2', emoji: '🐪', name: 'Juara Lembah Kisah', desc: 'Hafal seluruh wilayah Lembah Kisah', check: (p) => zoneComplete(p, 'lembah-kisah') },
+  { id: 'zone3', emoji: '⏳', name: 'Juara Bukit Waktu', desc: 'Hafal seluruh wilayah Bukit Waktu', check: (p) => zoneComplete(p, 'bukit-waktu') },
+  { id: 'zone4', emoji: '🌿', name: 'Juara Hutan Bintang', desc: 'Hafal seluruh wilayah Hutan Bintang', check: (p) => zoneComplete(p, 'hutan-bintang') },
+  { id: 'zone5', emoji: '⛵', name: 'Penakluk Samudra Awan', desc: 'Hafal seluruh wilayah Samudra Awan', check: (p) => zoneComplete(p, 'samudra-awan') },
   { id: 'fil', emoji: '🐘', name: 'Sahabat Gajah', desc: 'Hafal Surah Al-Fil', check: (p) => learned(p, 105) },
   { id: 'five', emoji: '🖐️', name: '5 Surah Hafal', desc: 'Hafal 5 surah', check: (p) => countLearned(p) >= 5 },
   { id: 'ten', emoji: '🔟', name: '10 Surah Hafal', desc: 'Hafal 10 surah', check: (p) => countLearned(p) >= 10 },
   { id: 'twenty', emoji: '🏅', name: '20 Surah Hafal', desc: 'Hafal 20 surah', check: (p) => countLearned(p) >= 20 },
   { id: 'juz30', emoji: '👑', name: 'Hafiz Juz 30', desc: 'Hafal semua 37 surah Juz 30!', check: (p) => countLearned(p) >= 37 },
-  { id: 'star3', emoji: '🌟', name: 'Bintang Tiga', desc: 'Dapat 3 bintang pertama (murojaah)', check: (p) => Object.values(p.stars).some((s) => s >= 3) },
-  { id: 'craft1', emoji: '🔨', name: 'Penempa Cahaya', desc: 'Menempa senjata atau perisai pertama di Bengkel', check: (p) => (p.crafted ?? []).length >= 2 },
+  { id: 'arti5', emoji: '📖', name: 'Paham Makna', desc: 'Lulus Ujian Arti di 5 surah', check: (p) => countActivity(p, 'arti') >= 5 },
+  { id: 'artiAll', emoji: '💎', name: 'Mufassir Kecil', desc: 'Lulus Ujian Arti semua 37 surah', check: (p) => countActivity(p, 'arti') >= 37 },
+  { id: 'boss5', emoji: '⚔️', name: 'Kesatria Kabut', desc: 'Kalahkan 5 Penjaga Surah', check: (p) => countActivity(p, 'battle') >= 5 },
+  { id: 'boss37', emoji: '🐉', name: 'Pahlawan Juz 30', desc: 'Kalahkan semua 37 Penjaga Surah', check: (p) => countActivity(p, 'battle') >= 37 },
+  { id: 'star3', emoji: '🌟', name: 'Partner Legendaris', desc: 'Evolusikan 1 Partner ke tahap Legendaris ✨', check: (p) => Object.values(p.stars).some((s) => s >= 3) },
+  { id: 'craft1', emoji: '🔨', name: 'Penempa Cahaya', desc: 'Menempa perlengkapan pertama di Bengkel', check: (p) => (p.crafted ?? []).length >= 2 },
+  { id: 'craftAll', emoji: '💍', name: 'Kolektor Bengkel', desc: 'Tempa seluruh perlengkapan di Bengkel', check: (p) => (p.crafted ?? []).length >= CRAFT_ITEMS.length },
   { id: 'combo5', emoji: '🔥', name: 'Api Semangat', desc: 'Raih Combo 5x benar berturut-turut', check: (p) => (p.comboBest ?? 0) >= 5 },
   { id: 'setoran1', emoji: '📜', name: 'Setoran Sah', desc: 'Dapat stempel hafiz dari orang tua', check: (p) => Object.values(p.setoran ?? {}).some((s) => s.status === 'approved') },
   { id: 'garden7', emoji: '🌳', name: 'Taman Rindang', desc: 'Belajar di 7 hari berbeda', check: (p) => p.garden.days >= 7 },

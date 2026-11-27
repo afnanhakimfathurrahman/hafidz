@@ -16,6 +16,7 @@ export function Bintang({ size = 120, mood = 'happy', color }: { size?: number; 
   const weapon = rpgEquipped?.weapon;
   const shield = rpgEquipped?.shield;
   const cloak = rpgEquipped?.cloak;
+  const accessory = rpgEquipped?.accessory;
 
   return (
     <motion.svg
@@ -76,6 +77,21 @@ export function Bintang({ size = 120, mood = 'happy', color }: { size?: number; 
           </>
         )}
         {hat === 'hat-crown' && <path d="M44 24 l2 -16 l8 8 l6 -10 l6 10 l8 -8 l2 16 z" fill="#FACC15" stroke="#CA8A04" strokeWidth="2" />}
+        {accessory === 'acc-crown' && (
+          <g>
+            <path d="M42 22 l3 -18 l8 9 l7 -12 l7 12 l8 -9 l3 18 z" fill="#FDE047" stroke="#F59E0B" strokeWidth="2" />
+            <circle cx="60" cy="14" r="3" fill="#38BDF8" />
+          </g>
+        )}
+        {accessory === 'acc-lamp' && (
+          <g transform="translate(55, 78)">
+            <circle cx="5" cy="5" r="6" fill="#F59E0B" stroke="#FEF08A" strokeWidth="2" />
+            <circle cx="5" cy="5" r="2.5" fill="#FEF9C3" />
+          </g>
+        )}
+        {accessory === 'acc-ring' && (
+          <circle cx="96" cy="70" r="4.5" fill="none" stroke="#FACC15" strokeWidth="2.5" />
+        )}
       </g>
 
       {/* Crafted Weapon on Right Hand */}

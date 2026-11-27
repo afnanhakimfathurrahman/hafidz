@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, ShieldAlert, Swords, Sparkles, RotateCcw } from 'lucide-react';
 import { SURAHS, surahOf, ayahText, type Ayah } from '../../data/quran';
 import { islandOf } from '../../data/islands';
-import { heroStats, surahRpgOf } from '../../data/rpg';
+import { ELEMENT_INFO, heroStats, surahRpgOf } from '../../data/rpg';
 import { QuranPanel, AyahText } from '../../components/AyahText';
 import { Bintang } from '../../components/Bintang';
 import { Button, Modal, TopBar } from '../../components/ui';
@@ -32,12 +32,16 @@ function buildBattleDeck(surahNo: number, band: 'A' | 'B'): BattleTurn[] {
   const neighbors = SURAHS.filter((_, i) => i !== idx && Math.abs(i - idx) <= 3);
   const turns: BattleTurn[] = [];
 
-  // Turn 1: Hafalan Surat (Sambung Ayat or Lengkapi Kata)
+  // Turn 1: Hafalan Surat (Sambung Ayat across the whole surah)
+  let firstIdx = -1;
   if (surah.count >= 2) {
-    const a = surah.ayahs[0];
-    const next = surah.ayahs[1];
+    firstIdx = Math.floor(Math.random() * (surah.count - 1));
+    const a = surah.ayahs[firstIdx];
+    const next = surah.ayahs[firstIdx + 1];
     const distractors = shuffle(
-      [...surah.ayahs.slice(2), ...neighbors.flatMap((ns) => ns.ayahs)].filter((x) => ayahText(x) !== ayahText(next)),
+      [...surah.ayahs, ...neighbors.flatMap((ns) => ns.ayahs)].filter(
+        (x) => ayahText(x) !== ayahText(next) && ayahText(x) !== ayahText(a),
+      ),
     ).slice(0, nChoices - 1);
     turns.push({
       kind: 'sambung',
@@ -112,9 +116,10 @@ function buildBattleDeck(surahNo: number, band: 'A' | 'B'): BattleTurn[] {
     });
   }
 
-  // Turn 5+: Extra Sambung Ayat to finish Boss cleanly if high HP
+  // Turn 5+: Extra Sambung Ayat to finish Boss cleanly across distinct verses
   if (surah.count >= 3) {
-    const pIdx = Math.min(surah.count - 2, 2);
+    const otherIndices = Array.from({ length: surah.count - 1 }, (_, i) => i).filter((i) => i !== firstIdx);
+    const pIdx = otherIndices.length > 0 ? otherIndices[Math.floor(Math.random() * otherIndices.length)] : Math.min(surah.count - 2, 2);
     const a = surah.ayahs[pIdx];
     const next = surah.ayahs[pIdx + 1];
     const distractors = shuffle(
@@ -201,18 +206,24 @@ export default function RpgBattle({ surahNo }: { surahNo: number }) {
       if (nextCombo >= 2) recordCombo(nextCombo);
       recordCorrect();
 
-      const mult = (turn.isUltimate ? 1.5 : 1) + (nextCombo >= 2 ? 0.25 : 0);
+      const mult = (turn.isUltimate ? 1.5 : 1) + (nextCombo >= 2 ? 0.25 + stats.partner.comboBonus : 0);
       const dmg = Math.round(stats.atk * mult);
       const nextBossHp = Math.max(0, bossHp - dmg);
       setBossHp(nextBossHp);
       setHitEffect('boss');
       setTimeout(() => setHitEffect(null), 350);
 
+      const heal = stats.partner.turnHeal + (turn.isUltimate ? stats.partner.ultHeal : 0);
+      if (heal > 0) {
+        setHeroHp((h) => Math.min(stats.maxHp, h + heal));
+      }
+
       sfx(nextCombo >= 2 || turn.isUltimate ? 'combo' : 'correct');
+      const healTxt = heal > 0 ? ` · +${heal} ❤️` : '';
       setBattleLog(
         turn.isUltimate
-          ? `✨ Jurus Makna! -${dmg} DMG ke ${rpg.bossName}!`
-          : `⚔️ Tepat! -${dmg} DMG ke ${rpg.bossName}!`,
+          ? `✨ Jurus Makna! -${dmg} DMG ke ${rpg.bossName}!${healTxt}`
+          : `⚔️ Tepat! -${dmg} DMG ke ${rpg.bossName}!${healTxt}`,
       );
       await say(praise());
 
@@ -241,7 +252,7 @@ export default function RpgBattle({ surahNo }: { surahNo: number }) {
     } else {
       setCombo(0);
       setWrongPicks((w) => [...w, idx]);
-      const bossDmg = 18;
+      const bossDmg = Math.max(4, 18 - stats.partner.dmgReduce);
       const nextHeroHp = Math.max(0, heroHp - bossDmg);
       setHeroHp(nextHeroHp);
       setHitEffect('hero');
@@ -331,6 +342,12 @@ export default function RpgBattle({ surahNo }: { surahNo: number }) {
               <div className="mt-0.5 text-xs text-slate-300 tabular-nums">
                 HP {heroHp} / {stats.maxHp}
               </div>
+              {activeCompanion && (
+                <div className="mt-1 inline-flex items-center gap-1 rounded-xl bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                  <span>{ELEMENT_INFO[activeCompanion.element].emoji}</span>
+                  <span>{stats.partner.summary}</span>
+                </div>
+              )}
             </div>
           </div>
 

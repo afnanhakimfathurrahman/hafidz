@@ -365,13 +365,22 @@ export default function IslandView({ surahNo }: { surahNo: number }) {
 
         <BintangSays text={nextHint} size={64} />
 
-        {/* Murattal Full Surah Loop Player */}
+        {/* Murattal Full Surah Loop Player & Mushaf Mode */}
         {!foggy && (
           <section className="flex flex-wrap items-center justify-between gap-2 rounded-3xl bg-white/90 p-3 shadow">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button color={murattalAyah !== null ? 'rose' : 'blue'} onClick={toggleMurattal}>
                 {murattalAyah !== null ? <Square size={20} /> : <Play size={20} />}
                 <span>{murattalAyah !== null ? `Stop (Ayat ${murattalAyah}/${surah.count})` : 'Putar Full Surah'}</span>
+              </Button>
+              <Button
+                color="purple"
+                onClick={() => {
+                  stopMurattal();
+                  navigate(`/pulau/${surahNo}/mushaf`);
+                }}
+              >
+                <BookOpen size={20} /> Mushaf & Tasmi&apos;
               </Button>
             </div>
             <Button

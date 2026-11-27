@@ -5,24 +5,26 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const AUDIO_HOSTS = /^https:\/\/(mirrors\.quranicaudio\.com|verses\.quran\.com)\/.*\.mp3$/i;
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   server: {
     host: '0.0.0.0',
     port: 3000,
     allowedHosts: true,
     hmr: false,
     watch: {
-      ignored: ['**/public/voice/**', '**/pilihan-suara/**', '**/dist/**'],
+      ignored: ['**/public/voice/**', '**/pilihan-suara/**', '**/dist/**', '**/.git/**'],
     },
   },
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      // Workbox's terser step hangs on Android/Termux; elsewhere (e.g. Cloudflare CI) build normally
-      mode: process.env.TERMUX_VERSION ? 'development' : 'production',
-      includeAssets: ['favicon.svg', 'robots.txt', 'icons/*.png'],
+    ...(command === 'build'
+      ? [
+          VitePWA({
+            registerType: 'autoUpdate',
+            // Workbox's terser step hangs on Android/Termux; elsewhere (e.g. Cloudflare CI) build normally
+            mode: process.env.TERMUX_VERSION ? 'development' : 'production',
+            includeAssets: ['favicon.svg', 'robots.txt', 'icons/*.png'],
       manifest: {
         name: 'Petualangan Hafiz Kecil - Game Juz 30',
         short_name: 'Hafiz Kecil',
@@ -71,5 +73,7 @@ export default defineConfig({
         ],
       },
     }),
+        ]
+      : []),
   ],
-});
+}));

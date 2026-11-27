@@ -47,6 +47,7 @@ export interface RpgEquipped {
   weapon?: string;
   shield?: string;
   cloak?: string;
+  accessory?: string;
   companion?: number; // surahNo
 }
 

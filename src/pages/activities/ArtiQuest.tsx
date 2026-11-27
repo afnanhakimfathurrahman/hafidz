@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, BookOpen } from 'lucide-react';
-import { SURAHS, surahOf, type Ayah } from '../../data/quran';
+import { SURAHS, partsOf, surahOf, type Ayah } from '../../data/quran';
 import { islandOf } from '../../data/islands';
 import { QuranPanel, AyahText } from '../../components/AyahText';
 import { BintangSays, type Mood } from '../../components/Bintang';
@@ -19,7 +19,7 @@ interface ArtiQuestion {
   options: { label: string; emoji?: string; correct: boolean }[];
 }
 
-function buildArtiQuestions(surahNo: number, band: 'A' | 'B'): ArtiQuestion[] {
+function buildArtiQuestions(surahNo: number, band: 'A' | 'B', range?: [number, number]): ArtiQuestion[] {
   const surah = surahOf(surahNo);
   const isl = islandOf(surahNo);
   const nChoices = band === 'A' ? 3 : 4;
@@ -36,8 +36,9 @@ function buildArtiQuestions(surahNo: number, band: 'A' | 'B'): ArtiQuestion[] {
     ]),
   };
 
-  // Q2..Qn: Terjemahan ayat
-  const pickedAyahs = shuffle(surah.ayahs).slice(0, band === 'A' ? 3 : 4).sort((a, b) => a.n - b.n);
+  // Q2..Qn: Terjemahan ayat (scoped to selected part if chosen)
+  const pool = range ? surah.ayahs.filter((a) => a.n >= range[0] && a.n <= range[1]) : surah.ayahs;
+  const pickedAyahs = shuffle(pool).slice(0, band === 'A' ? 3 : 4).sort((a, b) => a.n - b.n);
   const ayahQs: ArtiQuestion[] = pickedAyahs.map((a) => {
     const wrongTrs = shuffle(
       [...surah.ayahs, ...neighbors.flatMap((ns) => ns.ayahs)]
@@ -67,7 +68,15 @@ export default function ArtiQuest({ surahNo }: { surahNo: number }) {
   const recordCombo = useGameStore((s) => s.recordCombo);
   const addCoins = useGameStore((s) => s.addCoins);
 
-  const questions = useMemo(() => buildArtiQuestions(surahNo, profile.ageBand), [surahNo, profile.ageBand]);
+  const parts = partsOf(surah, profile.ageBand);
+  const [partIdx, setPartIdx] = useState<number | null>(null);
+  const selectedRange = partIdx !== null ? parts[partIdx] : undefined;
+
+  const questions = useMemo(
+    () => buildArtiQuestions(surahNo, profile.ageBand, selectedRange),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [surahNo, profile.ageBand, partIdx],
+  );
   const [qi, setQi] = useState(0);
   const [wrong, setWrong] = useState<number[]>([]);
   const [solved, setSolved] = useState(false);
@@ -79,7 +88,7 @@ export default function ArtiQuest({ surahNo }: { surahNo: number }) {
   });
   const [reward, setReward] = useState<{ stars: number; gained: number; coins: number } | null>(null);
 
-  const q = questions[qi];
+  const q = questions[qi] ?? questions[0];
 
   useEffect(() => {
     setWrong([]);
@@ -91,7 +100,16 @@ export default function ArtiQuest({ surahNo }: { surahNo: number }) {
     })();
     return stopAll;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qi]);
+  }, [qi, partIdx]);
+
+  const selectPart = (idx: number | null) => {
+    setPartIdx(idx);
+    setQi(0);
+    setWrong([]);
+    setSolved(false);
+    setCombo(0);
+    setBonusCoins(0);
+  };
 
   const choose = async (idx: number) => {
     if (solved) return;
@@ -133,6 +151,31 @@ export default function ArtiQuest({ surahNo }: { surahNo: number }) {
     <div className="flex min-h-screen flex-col">
       <TopBar back={`/pulau/${surahNo}`} title={`📖 Arti Surah & Ayat · ${surah.latin}`} />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 p-4">
+        {parts.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => selectPart(null)}
+              className={`rounded-2xl px-3 py-1.5 text-xs font-bold shadow-sm ${
+                partIdx === null ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700'
+              }`}
+            >
+              Semua Ayat
+            </button>
+            {parts.map(([from, to], idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => selectPart(idx)}
+                className={`rounded-2xl px-3 py-1.5 text-xs font-bold shadow-sm ${
+                  partIdx === idx ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700'
+                }`}
+              >
+                Bagian {idx + 1} ({from}–{to})
+              </button>
+            ))}
+          </div>
+        )}
         <ProgressDots total={questions.length} current={qi} />
         <ComboBanner combo={combo} bonusCoins={bonusCoins} />
         <BintangSays text={bubble.text} mood={bubble.mood} size={70} />

@@ -1,7 +1,15 @@
 import type { Progress } from '../store/useGameStore';
 
 export type ElementType = 'cahaya' | 'alam' | 'kisah' | 'waktu' | 'langit';
-export type RpgSlot = 'weapon' | 'shield' | 'cloak';
+export type RpgSlot = 'weapon' | 'shield' | 'cloak' | 'accessory';
+
+export const ELEMENT_INFO: Record<ElementType, { label: string; emoji: string; bonusDesc: string }> = {
+  cahaya: { label: 'Cahaya', emoji: '✨', bonusDesc: '+ATK & Pulih HP saat Jurus Makna' },
+  alam: { label: 'Alam', emoji: '🌿', bonusDesc: '+HP Maks & Pulih HP tiap jawaban tepat' },
+  kisah: { label: 'Kisah', emoji: '📜', bonusDesc: '+Bonus Koin & EXP ekstra setelah menang' },
+  waktu: { label: 'Waktu', emoji: '⏳', bonusDesc: '+Bonus kerusakan Combo beruntun' },
+  langit: { label: 'Langit', emoji: '🌌', bonusDesc: 'Mengurangi serangan balik Penjaga Kabut' },
+};
 
 export interface MaterialCost {
   kristal: number;
@@ -149,6 +157,42 @@ export const CRAFT_ITEMS: CraftItem[] = [
     coinBonus: 5,
     cost: { kristal: 5, daun: 5, bintang: 4, coins: 130 },
   },
+  {
+    id: 'acc-ring',
+    slot: 'accessory',
+    name: 'Cincin Bintang',
+    emoji: '💍',
+    desc: 'Aksesoris bercahaya +6 DMG & +15 HP.',
+    atkBonus: 6,
+    hpBonus: 15,
+    xpPct: 5,
+    coinBonus: 1,
+    cost: { kristal: 2, daun: 2, bintang: 1, coins: 35 },
+  },
+  {
+    id: 'acc-lamp',
+    slot: 'accessory',
+    name: 'Liontin Pelita',
+    emoji: '🪔',
+    desc: 'Pelita pengingat ayat: +10 DMG, +25 HP & +15% EXP.',
+    atkBonus: 10,
+    hpBonus: 25,
+    xpPct: 15,
+    coinBonus: 2,
+    cost: { kristal: 4, daun: 4, bintang: 2, coins: 75 },
+  },
+  {
+    id: 'acc-crown',
+    slot: 'accessory',
+    name: 'Mahkota Cahaya Juz 30',
+    emoji: '👑',
+    desc: 'Aksesoris agung penghafal Juz 30: +15 DMG, +40 HP & +25% EXP.',
+    atkBonus: 15,
+    hpBonus: 40,
+    xpPct: 25,
+    coinBonus: 4,
+    cost: { kristal: 8, daun: 8, bintang: 5, coins: 160 },
+  },
 ];
 
 export const craftItemOf = (id?: string) => CRAFT_ITEMS.find((i) => i.id === id);
@@ -218,23 +262,97 @@ export function levelOf(xp: number): { level: number; curXp: number; nextXp: num
   return { level, curXp, nextXp, pct: Math.min(100, Math.round((curXp / nextXp) * 100)) };
 }
 
-/** Combined RPG stats from crafted & equipped gear + companion count. */
+/** Computes active Companion element passive scaled by evolution stage (1..3). */
+export function partnerSkill(p: Progress) {
+  const compNo = p.rpgEquipped?.companion;
+  if (!compNo) {
+    return {
+      companion: null as SurahRpg | null,
+      stage: 0 as 0 | 1 | 2 | 3,
+      atkBonus: 0,
+      hpBonus: 0,
+      xpPct: 0,
+      coinBonus: 0,
+      ultHeal: 0,
+      turnHeal: 0,
+      comboBonus: 0,
+      dmgReduce: 0,
+      summary: 'Pilih Partner di Koleksi untuk aktifkan jurus elemen!',
+    };
+  }
+  const companion = surahRpgOf(compNo);
+  const stage = Math.max(1, companionStage(p, compNo)) as 1 | 2 | 3;
+  let atkBonus = 0,
+    hpBonus = 0,
+    xpPct = 0,
+    coinBonus = 0,
+    ultHeal = 0,
+    turnHeal = 0,
+    comboBonus = 0,
+    dmgReduce = 0;
+  let summary = '';
+
+  switch (companion.element) {
+    case 'cahaya':
+      atkBonus = 3 * stage;
+      ultHeal = 6 * stage;
+      summary = `+${atkBonus} ATK & +${ultHeal} HP saat Jurus Makna`;
+      break;
+    case 'alam':
+      hpBonus = 12 * stage;
+      turnHeal = 3 * stage;
+      summary = `+${hpBonus} HP Maks & +${turnHeal} HP tiap benar`;
+      break;
+    case 'kisah':
+      coinBonus = 3 * stage;
+      xpPct = 10 * stage;
+      summary = `+${coinBonus} Koin & +${xpPct}% EXP setelah duel`;
+      break;
+    case 'waktu':
+      comboBonus = 0.1 * stage;
+      atkBonus = 2 * stage;
+      summary = `+${atkBonus} ATK & +${Math.round(comboBonus * 100)}% DMG Combo`;
+      break;
+    case 'langit':
+      dmgReduce = 3 * stage;
+      hpBonus = 6 * stage;
+      summary = `Kurangi serangan bos -${dmgReduce} DMG & +${hpBonus} HP`;
+      break;
+  }
+
+  return { companion, stage, atkBonus, hpBonus, xpPct, coinBonus, ultHeal, turnHeal, comboBonus, dmgReduce, summary };
+}
+
+/** Combined RPG stats from crafted & equipped gear + companion count & active partner skill. */
 export function heroStats(p: Progress) {
   const eq = p.rpgEquipped ?? {};
   const weapon = craftItemOf(eq.weapon ?? 'weapon-wood');
   const shield = craftItemOf(eq.shield);
   const cloak = craftItemOf(eq.cloak);
+  const accessory = craftItemOf(eq.accessory);
   const ownedCompanions = Object.keys(p.stars).filter((k) => (p.stars[Number(k)] ?? 0) >= 2).length;
   const lv = levelOf(p.xp ?? 0).level;
+  const partner = partnerSkill(p);
 
   const baseAtk = 20 + (lv - 1) * 2 + ownedCompanions;
   const baseHp = 100 + (lv - 1) * 5;
-  const atk = baseAtk + (weapon?.atkBonus ?? 0) + (shield?.atkBonus ?? 0) + (cloak?.atkBonus ?? 0);
-  const maxHp = baseHp + (weapon?.hpBonus ?? 0) + (shield?.hpBonus ?? 0) + (cloak?.hpBonus ?? 0);
-  const xpPct = (weapon?.xpPct ?? 0) + (shield?.xpPct ?? 0) + (cloak?.xpPct ?? 0);
-  const coinBonus = (weapon?.coinBonus ?? 0) + (shield?.coinBonus ?? 0) + (cloak?.coinBonus ?? 0);
+  const atk = baseAtk + (weapon?.atkBonus ?? 0) + (shield?.atkBonus ?? 0) + (cloak?.atkBonus ?? 0) + (accessory?.atkBonus ?? 0) + partner.atkBonus;
+  const maxHp = baseHp + (weapon?.hpBonus ?? 0) + (shield?.hpBonus ?? 0) + (cloak?.hpBonus ?? 0) + (accessory?.hpBonus ?? 0) + partner.hpBonus;
+  const xpPct = (weapon?.xpPct ?? 0) + (shield?.xpPct ?? 0) + (cloak?.xpPct ?? 0) + (accessory?.xpPct ?? 0) + partner.xpPct;
+  const coinBonus = (weapon?.coinBonus ?? 0) + (shield?.coinBonus ?? 0) + (cloak?.coinBonus ?? 0) + (accessory?.coinBonus ?? 0) + partner.coinBonus;
 
-  return { atk, maxHp, xpPct, coinBonus, weapon, shield, cloak, level: lv };
+  return {
+    atk,
+    maxHp,
+    xpPct,
+    coinBonus,
+    weapon,
+    shield,
+    cloak,
+    accessory,
+    level: lv,
+    partner,
+  };
 }
 
 export function canCraft(p: Progress, item: CraftItem): boolean {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, ShoppingBag, Medal, Swords, Hammer, Sparkles, CheckCircle2, Circle, Gift } from 'lucide-react';
+import { Settings, ShoppingBag, Medal, Swords, Hammer, Sparkles, CheckCircle2, Circle, Gift, BookOpen } from 'lucide-react';
 import { SURAHS } from '../data/quran';
 import { islandOf } from '../data/islands';
 import { ZONES, zoneStats } from '../data/zones';
@@ -135,8 +135,14 @@ export default function MapView() {
                   {stats.weapon?.emoji ?? '🪄'}
                   {stats.shield ? ` ${stats.shield.emoji}` : ''}
                   {stats.cloak ? ` ${stats.cloak.emoji}` : ''}
+                  {stats.accessory ? ` ${stats.accessory.emoji}` : ''}
                 </span>
               </div>
+              {activeCompanion && (
+                <p className="mt-1 truncate text-[11px] font-medium text-amber-100">
+                  {activeCompanion.companionEmoji} {stats.partner.summary}
+                </p>
+              )}
             </div>
           </div>
 
@@ -177,15 +183,18 @@ export default function MapView() {
         </Button>
       </nav>
 
-      <div className="mx-auto grid max-w-md grid-cols-3 gap-2 px-3 pt-2">
-        <Button color="white" onClick={() => navigate('/kebun')} label="Kebun Hafiz" className="min-h-11 px-2 py-1.5 text-sm">
+      <div className="mx-auto grid max-w-md grid-cols-4 gap-2 px-3 pt-2">
+        <Button color="white" onClick={() => navigate('/kamus')} label="Kamus Arti" className="min-h-11 px-1.5 py-1.5 text-xs sm:text-sm">
+          <BookOpen size={17} /> Kamus
+        </Button>
+        <Button color="white" onClick={() => navigate('/kebun')} label="Kebun Hafiz" className="min-h-11 px-1.5 py-1.5 text-xs sm:text-sm">
           <span>{gardenPlant(p.garden.days)}</span> Kebun
         </Button>
-        <Button color="purple" onClick={() => navigate('/lencana')} label="Lencana" className="min-h-11 px-2 py-1.5 text-sm">
-          <Medal size={18} /> Lencana
+        <Button color="purple" onClick={() => navigate('/lencana')} label="Lencana" className="min-h-11 px-1.5 py-1.5 text-xs sm:text-sm">
+          <Medal size={17} /> Lencana
         </Button>
-        <Button color="white" onClick={() => setGate(true)} label="Area Orang tua" className="min-h-11 px-2 py-1.5 text-sm">
-          <Settings size={18} /> Orang Tua
+        <Button color="white" onClick={() => setGate(true)} label="Area Orang tua" className="min-h-11 px-1.5 py-1.5 text-xs sm:text-sm">
+          <Settings size={17} /> Ortu
         </Button>
       </div>
 

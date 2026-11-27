@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Hammer, Check, Sparkles } from 'lucide-react';
-import { CRAFT_ITEMS, MATERIALS, canCraft, heroStats, surahRpgOf, type RpgSlot } from '../data/rpg';
+import { CRAFT_ITEMS, ELEMENT_INFO, MATERIALS, canCraft, heroStats, type RpgSlot } from '../data/rpg';
 import { Button, TopBar } from '../components/ui';
 import { Bintang } from '../components/Bintang';
 import { useGameStore, useProgress } from '../store/useGameStore';
@@ -12,6 +12,7 @@ const TABS: { slot: RpgSlot; label: string }[] = [
   { slot: 'weapon', label: '⚔️ Senjata' },
   { slot: 'shield', label: '🛡️ Perisai' },
   { slot: 'cloak', label: '🧥 Jubah' },
+  { slot: 'accessory', label: '💍 Aksesoris' },
 ];
 
 /** Bengkel Cahaya: Craft & equip RPG weapons, shields, and cloaks from earned materials. */
@@ -24,7 +25,7 @@ export default function Forge() {
   const stats = heroStats(p);
   const mat = p.materials ?? { kristal: 0, daun: 0, bintang: 0 };
   const crafted = p.crafted ?? ['weapon-wood'];
-  const activeCompanion = p.rpgEquipped?.companion ? surahRpgOf(p.rpgEquipped.companion) : null;
+  const activeCompanion = stats.partner.companion;
 
   return (
     <div className="min-h-screen pb-10">
@@ -49,6 +50,11 @@ export default function Forge() {
                 <span className="rounded-xl bg-white/10 px-2.5 py-1 tabular-nums">⚡ Bonus EXP: +{stats.xpPct}%</span>
                 <span className="rounded-xl bg-white/10 px-2.5 py-1 tabular-nums">🪙 Bonus Koin: +{stats.coinBonus}</span>
               </div>
+              {activeCompanion && (
+                <div className="rounded-xl bg-white/10 px-2.5 py-1 text-xs font-semibold text-emerald-200">
+                  {ELEMENT_INFO[activeCompanion.element].emoji} Skill {activeCompanion.companionName}: {stats.partner.summary}
+                </div>
+              )}
             </div>
           </div>
 
@@ -67,9 +73,9 @@ export default function Forge() {
         </section>
 
         {/* Slot Filter */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {TABS.map((t) => (
-            <Button key={t.slot} color={tab === t.slot ? 'blue' : 'white'} onClick={() => setTab(t.slot)}>
+            <Button key={t.slot} color={tab === t.slot ? 'blue' : 'white'} onClick={() => setTab(t.slot)} className="px-2 text-base">
               {t.label}
             </Button>
           ))}

@@ -18,12 +18,14 @@ import LengkapiKata from './pages/activities/LengkapiKata';
 import SusunAyat from './pages/activities/SusunAyat';
 import RpgBattle from './pages/activities/RpgBattle';
 import ArtiQuest from './pages/activities/ArtiQuest';
+import MushafTasmi from './pages/activities/MushafTasmi';
 import TebakSurah from './pages/TebakSurah';
 import Shop from './pages/Shop';
 import Badges from './pages/Badges';
 import Garden from './pages/Garden';
 import Forge from './pages/Forge';
 import Collection from './pages/Collection';
+import KamusArti from './pages/KamusArti';
 import ParentArea from './pages/ParentArea';
 import { useFoggy } from './services/fog';
 
@@ -63,6 +65,7 @@ function Routes() {
     // Activities of a foggy island aren't open yet: show the island (with its fog notice)
     if (foggy) return <IslandView key={n} surahNo={n} />;
     if (c === 'dengar') return <ListenRepeat key={`${n}-${d}`} surahNo={n} part={d !== undefined ? Number(d) : undefined} />;
+    if (c === 'mushaf') return <MushafTasmi key={`m${n}`} surahNo={n} />;
     if (c === 'battle') return <RpgBattle key={`b${n}`} surahNo={n} />;
     if (c === 'arti') return <ArtiQuest key={`a${n}`} surahNo={n} />;
     if (c === 'sambung') return <SambungAyat key={n} surahNo={n} />;
@@ -74,6 +77,7 @@ function Routes() {
     return <IslandView key={n} surahNo={n} />;
   }
   if (a === 'murojaah') return <TebakSurah />;
+  if (a === 'kamus') return <KamusArti />;
   if (a === 'toko') return <Shop />;
   if (a === 'lencana') return <Badges />;
   if (a === 'kebun') return <Garden />;

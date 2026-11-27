@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Check } from 'lucide-react';
 import { SURAHS } from '../data/quran';
 import { islandOf } from '../data/islands';
-import { companionStage, STAGE_LABEL, surahRpgOf } from '../data/rpg';
+import { ELEMENT_INFO, companionStage, STAGE_LABEL, surahRpgOf } from '../data/rpg';
 import { Button, TopBar } from '../components/ui';
 import { BintangSays } from '../components/Bintang';
 import { useGameStore, useProgress } from '../store/useGameStore';
@@ -84,7 +84,15 @@ export default function Collection() {
                       {isl.latin} · {s.meaning}
                     </div>
                     <p className="text-xs text-slate-500">{st === 0 ? 'Pelajari surahnya untuk menetaskan!' : rpg.companionDesc}</p>
-                    <div className="mt-1 text-xs font-semibold text-emerald-700">{STAGE_LABEL[st]}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                      <span className="text-emerald-700">{STAGE_LABEL[st]}</span>
+                      <span className="rounded-lg bg-indigo-50 px-1.5 py-0.5 text-indigo-700">
+                        {ELEMENT_INFO[rpg.element].emoji} {ELEMENT_INFO[rpg.element].label}
+                      </span>
+                    </div>
+                    {st > 0 && (
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-500">{ELEMENT_INFO[rpg.element].bonusDesc}</p>
+                    )}
                   </div>
                 </div>
 
